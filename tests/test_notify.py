@@ -6,9 +6,7 @@ import duo_bot.notify as notify_module
 from duo_bot.notify import (
     build_message,
     notify,
-    parse_modes,
     send_telegram,
-    should_notify,
     tail_log,
 )
 
@@ -26,22 +24,7 @@ class FakeTelegramResponse:
 def clean_telegram_env(monkeypatch):
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
-    monkeypatch.delenv("TELEGRAM_NOTIFY", raising=False)
     monkeypatch.setattr(notify_module.time, "sleep", lambda _seconds: None)
-
-
-def test_parse_modes():
-    assert parse_modes(None) == {"failure"}
-    assert parse_modes("") == {"failure"}
-    assert parse_modes("success, failure") == {"success", "failure"}
-    assert parse_modes("all") == {"all"}
-
-
-def test_should_notify_defaults_to_failure_only():
-    assert should_notify("failure") is True
-    assert should_notify("success") is False
-    assert should_notify("success", "all") is True
-    assert should_notify("success", "success,failure") is True
 
 
 def test_build_message_redacts_secrets():
@@ -88,9 +71,14 @@ def test_send_gives_up(monkeypatch):
     assert send_telegram("hello", retries=0) is False
 
 
-def test_notify_respects_mode(monkeypatch):
-    monkeypatch.setenv("TELEGRAM_NOTIFY", "failure")
-    assert notify("success") is False
+def test_notify_always_sends(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:abc")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
+    monkeypatch.setattr(
+        notify_module.requests, "post", lambda *a, **k: FakeTelegramResponse(200, {"ok": True})
+    )
+    assert notify("success") is True
+    assert notify("failure") is True
 
 
 def test_tail_log(tmp_path):

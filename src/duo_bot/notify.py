@@ -15,19 +15,6 @@ from .jwt import redact
 TELEGRAM_LIMIT = 4096
 
 
-def parse_modes(raw: str | None) -> set[str]:
-    """Parse ``TELEGRAM_NOTIFY`` (default: failures only)."""
-    if not raw:
-        return {"failure"}
-    modes = {part.strip().lower() for part in raw.split(",") if part.strip()}
-    return modes or {"failure"}
-
-
-def should_notify(status: str, raw_modes: str | None = None) -> bool:
-    modes = parse_modes(raw_modes if raw_modes is not None else get("TELEGRAM_NOTIFY"))
-    return "all" in modes or status.lower() in modes
-
-
 def build_message(status: str, summary: str | None = None, *, title: str = "duo-bot") -> str:
     icon = "✅" if status.lower() == "success" else "🔴"
     lines = [f"{icon} {title}: {status}"]
@@ -91,10 +78,6 @@ def notify(
     status: str,
     *,
     summary: str | None = None,
-    notify_modes: str | None = None,
     title: str = "duo-bot",
 ) -> bool:
-    if not should_notify(status, notify_modes):
-        logger.info("telegram notification for status {!r} is disabled", status)
-        return False
     return send_telegram(build_message(status, summary, title=title))

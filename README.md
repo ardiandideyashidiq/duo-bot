@@ -49,7 +49,6 @@ Optional Telegram notifications:
 ```bash
 TELEGRAM_BOT_TOKEN="123456:ABC..."
 TELEGRAM_CHAT_ID="123456789"
-TELEGRAM_NOTIFY="failure"   # failure (default) | success | all | success,failure
 ```
 
 ## Commands
@@ -81,8 +80,7 @@ Setup:
 
 1. Fork/push this repository.
 2. Add repository secret `DUOLINGO_JWT` (Settings → Secrets and variables → Actions).
-3. Optional secrets `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and variable
-   `TELEGRAM_NOTIFY` (`failure`, `success`, `all`).
+3. Optional secrets `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
 4. Enable workflows in the Actions tab and run `duo-bot keep streak` once via
    **Run workflow** to verify.
 
