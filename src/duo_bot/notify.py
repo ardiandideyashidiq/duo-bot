@@ -41,8 +41,8 @@ def send_telegram(
     timeout: float = 10.0,
     retries: int = 2,
 ) -> bool:
-    token = token or get("TELEGRAM_BOT_TOKEN")
-    chat_id = chat_id or get("TELEGRAM_CHAT_ID")
+    token = (token or get("TELEGRAM_BOT_TOKEN") or "").strip().strip("'\"")
+    chat_id = (chat_id or get("TELEGRAM_CHAT_ID") or "").strip().strip("'\"")
     if not (token and chat_id):
         logger.info("telegram is not configured; skipping notification")
         return False
@@ -61,14 +61,23 @@ def send_telegram(
         except Exception as exc:  # noqa: BLE001 - notification must never crash the job
             logger.warning("telegram request failed (attempt {}): {}", attempt, type(exc).__name__)
         else:
+            desc = ""
             try:
-                ok = resp.status_code == 200 and bool(resp.json().get("ok"))
+                data = resp.json()
+                ok = resp.status_code == 200 and bool(data.get("ok"))
+                desc = str(data.get("description") or getattr(resp, "text", ""))
             except ValueError:
-                ok = False
+                ok = resp.status_code == 200
+                desc = getattr(resp, "text", "")
+
             if ok:
                 logger.info("telegram notification sent")
                 return True
-            logger.warning("telegram returned HTTP {}", resp.status_code)
+
+            detail = f": {redact(desc.strip())}" if desc else ""
+            logger.warning("telegram returned HTTP {}{}", resp.status_code, detail)
+            if 400 <= resp.status_code < 500 and resp.status_code != 429:
+                return False
         if attempt <= retries:
             time.sleep(min(5.0, 2.0**attempt))
     return False
