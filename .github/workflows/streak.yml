@@ -1,0 +1,56 @@
+name: duo-bot keep streak
+
+on:
+  schedule:
+    - cron: "0 19 * * *" # 02:00 Asia/Jakarta (UTC+7)
+    - cron: "0 7 * * *" # 14:00 Asia/Jakarta (safety net)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: duo-bot
+  cancel-in-progress: false
+
+jobs:
+  keep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TZ: Asia/Jakarta
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.15"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-python: true
+
+      - run: uv sync --locked --no-dev
+
+      - name: keep streak
+        run: uv run duo-bot keep --lessons 1
+        env:
+          DUOLINGO_JWT: ${{ secrets.DUOLINGO_JWT }}
+
+      - name: upload logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: duo-bot-log
+          path: logs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: telegram notification
+        if: always()
+        continue-on-error: true
+        run: uv run duo-bot notify --status "${{ job.status }}"
+        env:
+          DUOLINGO_JWT: ${{ secrets.DUOLINGO_JWT }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_NOTIFY: ${{ vars.TELEGRAM_NOTIFY || 'failure' }}

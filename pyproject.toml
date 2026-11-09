@@ -1,0 +1,41 @@
+[project]
+name = "duo-bot"
+version = "0.1.0"
+description = "Keep a Duolingo streak and farm XP from GitHub Actions."
+readme = "README.md"
+authors = [
+    { name = "rdndds", email = "rdndds@gmail.com" }
+]
+requires-python = ">=3.15"
+dependencies = [
+    "curl-cffi>=0.17.0",
+    "loguru>=0.7.3",
+]
+
+[project.scripts]
+duo-bot = "duo_bot:main"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.17.4",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py315"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "BLE", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q -m 'not integration'"
+markers = [
+    "integration: hits the real Duolingo API (needs DUOLINGO_JWT)",
+]

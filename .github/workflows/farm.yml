@@ -1,0 +1,70 @@
+name: duo-bot xp farm
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_xp:
+        description: "Stop after this much XP"
+        type: number
+        default: 100
+      max_lessons:
+        description: "Hard lesson cap"
+        type: number
+        default: 20
+      dry_run:
+        description: "Create sessions without submitting them"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: duo-bot
+  cancel-in-progress: false
+
+jobs:
+  farm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: Asia/Jakarta
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.15"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-python: true
+
+      - run: uv sync --locked --no-dev
+
+      - name: farm xp
+        run: >
+          uv run duo-bot farm
+          --target-xp ${{ inputs.target_xp }}
+          --max-lessons ${{ inputs.max_lessons }}
+          ${{ inputs.dry_run && '--dry-run' || '' }}
+        env:
+          DUOLINGO_JWT: ${{ secrets.DUOLINGO_JWT }}
+
+      - name: upload logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: duo-bot-farm-log
+          path: logs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: telegram notification
+        if: always()
+        continue-on-error: true
+        run: uv run duo-bot notify --status "${{ job.status }}"
+        env:
+          DUOLINGO_JWT: ${{ secrets.DUOLINGO_JWT }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_NOTIFY: ${{ vars.TELEGRAM_NOTIFY || 'failure' }}
